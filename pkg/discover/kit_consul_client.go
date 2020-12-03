@@ -47,7 +47,7 @@ func (consulClient *KitConsulClient) Register(serviceName, instanceId, instanceH
 		Meta:    meta,
 		Check: &api.AgentServiceCheck{
 			Interval:                       "15s",
-			GRPC:                           fmt.Sprintf("%v:%v/%v", instanceHost, instancePort, serviceName),
+			GRPC:                           fmt.Sprintf("%v:%v/grpc.health.v1.%v", instanceHost, instancePort, serviceName),
 			DeregisterCriticalServiceAfter: "30s",
 		},
 	}
