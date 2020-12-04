@@ -1,13 +1,17 @@
 package discover
 
 import (
+	"errors"
 	"fmt"
+	"github.com/go-kit/kit/endpoint"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/sd"
 	"github.com/go-kit/kit/sd/consul"
 	"github.com/hashicorp/consul/api"
+	"io"
 	"strconv"
 	"sync"
+	"time"
 )
 
 type KitConsulClient struct {
@@ -157,4 +161,23 @@ func (consulClient *KitConsulClient) DiscoverServices(serviceName string, logger
 	//}
 	//consulClient.instancesMap.Store(serviceName, instances)
 	//return instances
+}
+
+func (consulClient *KitConsulClient) DiscoverServicesClient(serviceName string, logger log.Logger, clientFactory func(instance string) (client interface{}, err error)) (client interface{}, err error) {
+	svcIns := consul.NewInstancer(consulClient.client, logger, serviceName, nil, true)
+	factoryFor := func() sd.Factory {
+		return func(instance string) (endpoint.Endpoint, io.Closer, error) {
+			client, err = clientFactory(instance)
+			return nil, nil, err
+		}
+	}
+	factory := factoryFor()
+	sd.NewEndpointer(svcIns, factory, logger)
+	for i := 0; i < 10000 && client == nil; i++ {
+		time.Sleep(time.Millisecond)
+	}
+	if client == nil {
+		err = errors.New("initialization client timeout")
+	}
+	return client, err
 }
